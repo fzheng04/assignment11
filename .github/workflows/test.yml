@@ -110,6 +110,6 @@ jobs:
           context: .
           push: true
           tags: |
-            fzheng04/601_module10:latest
-            fzheng04/601_module10:${{ github.sha }}
+            fzheng04/601_module11:latest
+            fzheng04/601_module11:${{ github.sha }}
           platforms: linux/amd64
