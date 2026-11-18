@@ -1,37 +1,75 @@
-# IS601 Module 10 — Secure User Model and CI/CD
+# IS601 Module 11 — Calculation Model and Validation
 
-This project extends my previous FastAPI calculator application by implementing secure user registration using SQLAlchemy, Pydantic, and PostgreSQL. It also incorporates password hashing, automated unit and integration tests, Docker containerization, and a GitHub Actions CI/CD pipeline.
+This project builds on my Module 10 FastAPI calculator application by adding a SQLAlchemy Calculation model, Pydantic validation schemas, and a factory pattern for handling arithmetic operations. It also includes PostgreSQL integration testing and continues using Docker and GitHub Actions for CI/CD.
 
 ## Features
 
 - **FastAPI Calculator:** Supports addition, subtraction, multiplication, and division.
-- **SQLAlchemy User Model:** Stores usernames, emails, password hashes, and account creation timestamps in PostgreSQL.
-- **Pydantic Validation:** Validates registration information and prevents sensitive password data from appearing in API responses.
-- **Password Security:** Uses Argon2 to securely hash and verify passwords.
-- **Database Constraints:** Enforces unique usernames and email addresses.
+- **SQLAlchemy Models:** Defines User and Calculation models for storing data in PostgreSQL.
+- **Pydantic Validation:** Validates calculation inputs, operation types, and division by zero.
+- **Factory Pattern:** Selects the appropriate arithmetic operation and creates Calculation objects.
+- **User Registration:** Retains secure user registration and Argon2 password hashing from Module 10.
 - **Automated Testing:** Includes unit, integration, and end-to-end tests.
-- **Docker Compose:** Runs FastAPI, PostgreSQL, and pgAdmin in separate containers.
-- **CI/CD:** Uses GitHub Actions for automated testing, Trivy vulnerability scanning, and Docker Hub deployment.
+- **Docker Compose:** Runs FastAPI, PostgreSQL, and pgAdmin.
+- **CI/CD:** Uses GitHub Actions for automated testing, security scanning, and Docker Hub deployment.
 
 ## Technologies
 
-Python, FastAPI, SQLAlchemy, Pydantic, PostgreSQL, Argon2, pytest, Playwright, Docker, Docker Compose, GitHub Actions, Trivy
+Python 3.12, FastAPI, SQLAlchemy, Pydantic, PostgreSQL, pytest, Docker, Docker Compose, GitHub Actions, Playwright, Trivy
+
+## Calculation Model
+
+The SQLAlchemy Calculation model contains the following fields:
+
+| Field | Description |
+|---|---|
+| id | Unique calculation identifier |
+| a | First operand |
+| b | Second operand |
+| type | Operation type |
+| result | Calculated result |
+
+The application supports four operations: `add`, `subtract`, `multiply`, and `divide`.
+
+### Pydantic Schemas
+
+- `CalculationCreate`: Validates incoming operands and operation types.
+- `CalculationRead`: Defines how calculation records are serialized.
+- `CalculationType`: Restricts operations to the four supported types.
+
+Validation prevents unsupported operations, division by zero, and invalid numeric inputs.
+
+### Factory Pattern
+
+The `CalculationFactory` class uses the existing arithmetic functions to calculate results and create SQLAlchemy Calculation objects.
+
+For example:
+
+```python
+data = CalculationCreate(a=10, b=5, type="multiply")
+calculation = CalculationFactory.create(data)
+
+print(calculation.result)  # 50.0
+```
+
+The factory creates the object, while SQLAlchemy handles database persistence.
+
+Calculation database API endpoints will be implemented in Module 12.
 
 ## Running the Application
 
 ### Prerequisites
 
-- Docker and Docker Compose
 - Git
-- Python 3.10+ for local development, with compatible dependencies installed
+- Docker and Docker Compose
 
 ### Setup
 
 Clone the repository:
 
 ```bash
-git clone https://github.com/fzheng04/assignment10.git
-cd assignment10
+git clone https://github.com/fzheng04/assignment11.git
+cd assignment11
 ```
 
 Build and start the containers:
@@ -45,139 +83,92 @@ The application will be accessible at:
 | Service | URL |
 |---|---|
 | FastAPI Calculator | http://localhost:8000 |
-| Swagger API Documentation | http://localhost:8000/docs |
+| API Documentation | http://localhost:8000/docs |
 | pgAdmin | http://localhost:5050 |
 
-The database tables are initialized automatically when the application starts.
+Database tables are initialized automatically when the application starts.
 
-Stop the containers with:
+Stop the containers:
 
 ```bash
 docker compose down
 ```
 
-The PostgreSQL volume is preserved when stopping the containers normally.
+## Running Tests
 
-## User Registration
-
-The application provides a `POST /users` endpoint.
-
-Example request:
-
-```json
-{
-  "username": "testuser",
-  "email": "test@example.com",
-  "password": "SecurePassword123!"
-}
-```
-
-A successful request returns HTTP `201 Created` with the user's ID, username, email, and creation timestamp.
-
-Passwords are hashed using Argon2 before being stored in PostgreSQL. The API response does not expose passwords or password hashes.
-
-Duplicate usernames or emails return HTTP `409 Conflict`. Invalid registration data is rejected through Pydantic validation.
-
-## Database Model
-
-The SQLAlchemy `User` model includes:
-
-| Column | Description |
-|---|---|
-| `id` | Primary key |
-| `username` | Unique, required username |
-| `email` | Unique, required email |
-| `password_hash` | Securely hashed password |
-| `created_at` | Automatically generated timestamp |
-
-## Running Tests Locally
+Tests can be executed using Docker to ensure the correct PostgreSQL connection and Python environment.
 
 ### Unit Tests
 
-Create and activate a Python virtual environment:
-
 ```bash
-python3 -m venv venv
-source venv/bin/activate
-python3 -m pip install -r requirements.txt
+docker compose run --rm web python -m pytest tests/unit/ -v -o addopts=""
 ```
 
-Run unit tests:
-
-```bash
-python3 -m pytest tests/unit/ -v
-```
+These tests cover arithmetic operations, factory behavior, Pydantic validation, and existing user functionality.
 
 ### PostgreSQL Integration Tests
 
-Start the application and database:
-
 ```bash
-docker compose up -d --build
+docker compose run --rm web python -m pytest tests/integration/ -v -o addopts=""
 ```
 
-Run the integration tests inside the FastAPI container:
+The Module 11 integration tests verify that calculations can be saved to PostgreSQL, retrieved correctly, and validated before insertion.
 
-```bash
-docker compose exec \
-  -e COVERAGE_FILE=/tmp/module10-coverage \
-  web python3 -m pytest tests/integration/ -v
-```
+All six new calculation integration tests passed locally.
 
-Run unit and integration tests together:
+### End-to-End Tests
 
-```bash
-docker compose exec \
-  -e COVERAGE_FILE=/tmp/module10-coverage \
-  web python3 -m pytest tests/unit/ tests/integration/ -v
-```
+The existing Playwright tests are also included in the project and run through GitHub Actions.
 
-The tests cover password hashing and verification, Pydantic validation, user registration, database persistence, duplicate usernames and emails, and safe API responses.
-
-The project also retains end-to-end tests from the earlier calculator application.
+The CI workflow installs the required Playwright browser dependencies before executing them.
 
 ## CI/CD Pipeline
 
-GitHub Actions automatically runs when changes are pushed to the `main` branch.
+GitHub Actions runs automatically on pushes and pull requests to the `main` branch.
 
-The pipeline consists of three jobs:
+The pipeline includes three jobs:
 
-1. **Test:** Installs dependencies, starts PostgreSQL, initializes database tables, and runs unit, integration, and end-to-end tests.
-2. **Security:** Builds the Docker image and scans it with Trivy for high- and critical-severity vulnerabilities.
-3. **Deploy:** Builds and pushes the Docker image to Docker Hub after successful testing and security scanning.
+1. **Test:** Runs unit, integration, and end-to-end tests using PostgreSQL.
+2. **Security:** Builds the Docker image and scans it using Trivy.
+3. **Deploy:** Pushes the Docker image to Docker Hub after the previous jobs succeed.
 
-Docker Hub credentials are managed through GitHub Actions repository secrets.
+Python 3.12 is used in both the Dockerfile and GitHub Actions.
+
+During development, Python 3.13 caused a bus error inside Docker. Switching to Python 3.12 resolved the issue and allowed the integration tests to run successfully.
 
 ## Docker Hub
 
-**Docker Hub Repository:** https://hub.docker.com/r/fzheng04/601_module10
+Docker Hub Repository:
 
-Pull the published image:
+https://hub.docker.com/r/fzheng04/601_module11
+
+Pull the latest image:
 
 ```bash
-docker pull fzheng04/601_module10:latest
+docker pull fzheng04/601_module11:latest
 ```
 
-The application image requires a PostgreSQL database connection, configured through the `DATABASE_URL` environment variable.
+The image requires a PostgreSQL database connection configured through the `DATABASE_URL` environment variable.
 
 ## Security
 
-- Passwords are never stored in plaintext.
-- Argon2 is used for password hashing.
-- Pydantic validates incoming registration data.
-- SQLAlchemy enforces database constraints.
-- API responses exclude password hashes.
-- GitHub Actions secrets protect Docker Hub credentials.
+- Passwords are hashed using Argon2.
+- Pydantic validates incoming user and calculation data.
+- SQLAlchemy manages database interactions without raw SQL.
+- User API responses exclude password hashes.
+- GitHub Actions secrets store Docker Hub credentials.
 - Trivy scans Docker images for known vulnerabilities.
 
 ## Project Development
 
-This repository builds upon my Module 9 FastAPI calculator and PostgreSQL implementation. Module 10 introduces ORM-based database management, secure user registration, automated database testing, and additional deployment security.
+Module 11 builds on the previous FastAPI calculator and secure user registration functionality.
 
-The Git commit history documents the project's development, including implementation milestones, testing, bug fixes, and CI/CD improvements.
+The main additions are the Calculation SQLAlchemy model, Pydantic calculation schemas, factory pattern, and PostgreSQL integration tests.
+
+These changes provide the foundation for implementing calculation database endpoints in Module 12.
 
 ## Author
 
 Feiyang Zheng  
 NJIT — IS601  
-Module 10 Assignment
+Module 11 Assignment
