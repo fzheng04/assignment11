@@ -1,6 +1,6 @@
 
 from app.database import Base, engine
-from app.models import User
+from app.models import User, Calculation
 
 
 def init_db():
